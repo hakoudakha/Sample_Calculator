@@ -1,0 +1,128 @@
+.386 
+.model flat,stdcall
+option casemap:none
+
+includelib C:\masm32\lib\user32.lib 
+include C:\masm32\include\windows.inc
+include C:\masm32\include\user32.inc
+include C:\masm32\include\kernel32.inc
+includelib C:\masm32\lib\kernel32.lib
+include C:\masm32\include\masm32.inc
+includelib C:\masm32\lib\masm32.lib
+
+WinMain PROTO STDCALL :DWORD,:DWORD,:DWORD,:DWORD
+WinProc PROTO STDCALL :DWORD,:DWORD,:DWORD,:DWORD
+CalcProc PROTO STDCALL 
+
+.data 
+AppTit byte "Calc"
+ClassName byte "First Window",0
+TitleWnd byte "Create First Wnd",0
+StaticPlusSign byte "+",0
+EditClassName byte "edit",0
+StaticClassName byte "static",0
+ButtonClassName byte "button",0
+ButtonCalcText byte "Calculate"
+.data? 
+hInstance dd ? 
+hbuttonCalc HWND ?
+hStaticPlus HWND ? 
+hEditNum1 HWND ? 
+hEditNum2 HWND ? 
+NumVal1 dd ? 
+NumVal2 dd ? 
+buffer db ?
+.const 
+EditNumID1 equ 1
+EditNumID2 equ 2
+ButtonCalcID equ 3 
+
+
+.code 
+      main : 
+            invoke GetModuleHandle,NULL
+             mov hInstance,eax 
+            invoke WinMain,hInstance,NULL,NULL,SW_SHOWNORMAL
+	   
+ WinMain PROC HInstance:DWORD,PrevhInstance:DWORD,lpCmdLine:DWORD,nShowCmd:DWORD
+ 	
+ 	LOCAL ws:WNDCLASSEX
+ 	LOCAL hwnd:HWND
+ 	LOCAL msg:MSG 
+ 	
+ 	mov ws.cbSize , sizeof WNDCLASSEX
+ 	mov ws.style , 0 
+ 	mov ws.lpfnWndProc ,offset WinProc 
+ 	mov ws.cbClsExtra,NULL
+ 	mov ws.cbWndExtra,NULL 
+ 	push HInstance 
+ 	pop ws.hInstance 
+ 	invoke LoadIcon,NULL,IDI_APPLICATION
+ 	mov ws.hIcon,eax
+ 	mov ws.hIconSm,eax 
+ 	invoke LoadCursor,NULL,IDC_ARROW  
+ 	mov ws.hCursor,eax 
+ 	mov ws.hbrBackground,COLOR_WINDOW 
+ 	mov ws.lpszMenuName,NULL 
+ 	mov ws.lpszClassName, offset ClassName
+ 	
+ 	invoke RegisterClassEx,addr ws 
+ 	
+ 	invoke CreateWindowEx,NULL,addr ClassName,addr TitleWnd,WS_TILEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,300,150,NULL,NULL,HInstance,NULL
+ 	mov hwnd,eax
+ 	invoke ShowWindow,hwnd,SW_SHOW
+ 	invoke UpdateWindow,hwnd 
+ 	
+ 	.while (TRUE)
+ 		invoke GetMessage,addr msg,NULL,0,0
+ 		 .if(!eax)
+ 		 	.break
+ 		 .endif
+ 		invoke TranslateMessage,addr msg 
+ 		invoke DispatchMessage,addr msg 
+ 	.endw
+ 	mov eax,msg.wParam 
+ 	ret 
+ WinMain endp
+ WinProc PROC hwnd:DWORD , msg:DWORD , wParam:DWORD , lParam:DWORD
+ 	 mov eax,msg
+ 	 .if eax == WM_CREATE 
+ 	 	;Edit1 for number 
+ 	  invoke CreateWindowEx,WS_EX_CLIENTEDGE,addr EditClassName,NULL,WS_CHILD or WS_VISIBLE or WS_BORDER or ES_CENTER or ES_AUTOHSCROLL,50,20,75,25,hwnd,EditNumID1,hInstance,NULL
+ 	 	mov hEditNum1,eax
+ 	 	;Static for information "+" 
+ 	  invoke CreateWindowEx,NULL,addr StaticClassName,NULL,WS_CHILD or WS_VISIBLE or ES_CENTER or SS_SIMPLE,145,20,10,25,hwnd,NULL,hInstance,NULL
+ 	        mov hStaticPlus,eax 
+ 	  invoke SetWindowText,hStaticPlus, addr StaticPlusSign   
+ 	       ;Edit2 for number 
+ 	  invoke CreateWindowEx,WS_EX_CLIENTEDGE,addr EditClassName,NULL,WS_CHILD or WS_VISIBLE or WS_BORDER or ES_CENTER or ES_AUTOHSCROLL,175,20,75,25,hwnd,EditNumID2,hInstance,NULL
+ 	        mov hEditNum2,eax 
+ 	   invoke CreateWindowEx,NULL,addr ButtonClassName,addr ButtonCalcText,WS_CHILD or WS_VISIBLE or BS_DEFPUSHBUTTON,70,75,150,25,hwnd,ButtonCalcID,hInstance,NULL 
+ 	           
+         .elseif eax == WM_CLOSE
+         	invoke ExitProcess,0
+         .elseif msg == WM_COMMAND
+              mov eax, wParam 
+              .if lParam != 0
+              	.if ax == ButtonCalcID  
+                    	invoke CalcProc 
+                    .endif
+              	.endif
+         .else  
+              invoke DefWindowProc,hwnd,msg,wParam,lParam
+         .endif
+          ret
+ WinProc endp
+    CalcProc PROC 
+    	invoke GetWindowText,hEditNum1,addr buffer,5 
+    	invoke atol,addr buffer  
+    	mov NumVal1,eax 
+    	invoke GetWindowText,hEditNum2 ,addr buffer,5 
+    	invoke atol,addr buffer 
+    	mov NumVal2,eax 
+    	mov eax,[NumVal1]
+    	add eax,[NumVal2]
+    	invoke dwtoa ,eax,addr buffer 
+    	invoke MessageBox,NULL,addr buffer,addr AppTit,MB_OK 
+    CalcProc endp
+	  end main
